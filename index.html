@@ -495,12 +495,12 @@ compM.randomize=()=>{ compM.knobs.amt.set(Math.random()); compM.knobs.mix.set(.3
 const satM=baseModule("sat","SATURATE","var(--rust)",false);
 let st={};
 const SAT_CURVES={
-  CONSOLE:d=>shaper(x=>Math.tanh(x*(1+d*4))/Math.tanh(1+d*4)*(1+d*.6)),
-  TAPE:   d=>shaper(x=>{const y=x*(1+d*6);return y/(1+Math.abs(y))*1.5;}),
-  TUBE:   d=>shaper(x=>{const y=x*(1+d*5);return (y>=0?Math.tanh(y):Math.tanh(y*0.7)*1.15);}),
-  DIGITAL:d=>shaper(x=>clamp(x*(1+d*8),-1,1)),
-  FOLD:   d=>shaper(x=>Math.sin(x*(1+d*9)*1.57)),
-  FLUB:   d=>shaper(x=>Math.tanh(x*(1+d*3))*Math.cos(x*d*2))};
+  CONSOLE:d=>shaper(x=>Math.tanh(x*(1+d*2.2))/Math.tanh(1+d*2.2)),
+  TAPE:   d=>shaper(x=>{const y=x*(1+d*3);return y/(1+Math.abs(y))*(1.2-d*.2);}),
+  TUBE:   d=>shaper(x=>{const y=x*(1+d*2.5);return (y>=0?Math.tanh(y):Math.tanh(y*0.75)*1.1);}),
+  DIGITAL:d=>shaper(x=>clamp(x*(1+d*3.5),-1,1)),
+  FOLD:   d=>shaper(x=>Math.sin(x*(1+d*4.5)*1.57)),
+  FLUB:   d=>shaper(x=>Math.tanh(x*(1+d*2))*Math.cos(x*d*1.2))};
 satM.build=card=>{
   st.pre=AC.createBiquadFilter(); st.pre.type="allpass";
   st.ws=AC.createWaveShaper(); st.ws.oversample="4x";
@@ -513,7 +513,7 @@ satM.build=card=>{
     if(st.curve==="FLUB"){st.pre.type="lowpass";st.pre.frequency.value=1200;}
     else st.pre.type="allpass";
     const m=satM.knobs.mix.get()*MAG;
-    st.wet.gain.value=m*(1-d*.35); st.dry.gain.value=1-m; };
+    st.wet.gain.value=m/(1+d*1.1); st.dry.gain.value=1-m; };
   const k=card.knobRow;
   satM.knobs.drive=makeKnob(k,{label:"DRIVE",min:0,max:1,val:.3,fmt:v=>Math.round(v*100)+"%",onchange:upd});
   satM.knobs.mix=makeKnob(k,{label:"MIX",min:0,max:1,val:.8,fmt:v=>Math.round(v*100)+"%",onchange:upd});
@@ -521,7 +521,7 @@ satM.build=card=>{
     i=>{st.curve=Object.keys(SAT_CURVES)[i]; upd();});
   satM.setMag=upd;
 };
-satM.randomize=()=>{ satM.knobs.drive.set(Math.random()); satM.knobs.mix.set(.3+Math.random()*.7);
+satM.randomize=()=>{ satM.knobs.drive.set(Math.random()*.6); satM.knobs.mix.set(.3+Math.random()*.7);
   satM.segs.mode.set(Math.floor(Math.random()*6)); };
 
 /* ---- 6 MORE (fixo) ---- */
@@ -537,16 +537,16 @@ moreM.build=card=>{
   const upd=()=>{ if(!moreM.knobs.amt||!moreM.knobs.tone||!moreM.segs.stage) return;
     const a=moreM.knobs.amt.get()*MAG, stg=moreM.segs.stage.get()+1,
       tone=moreM.knobs.tone.get();
-    mo.ws.curve=shaper(x=>{let y=x;for(let s=0;s<stg;s++)y=Math.tanh(y*(1+a*3));return clamp(y*(1+a),-1,1);});
+    mo.ws.curve=shaper(x=>{let y=x;for(let s=0;s<stg;s++)y=Math.tanh(y*(1+a*1.5));return clamp(y,-1,1);});
     mo.tilt1.gain.value=-tone*6; mo.tilt2.gain.value=tone*6;
-    mo.wet.gain.value=Math.min(1,a*3)*(1/(1+a*0.8)); mo.dry.gain.value=1-Math.min(1,a*3); };
+    mo.wet.gain.value=a/(1+a*0.6); mo.dry.gain.value=1-a; };
   const k=card.knobRow;
   moreM.knobs.amt=makeKnob(k,{label:"MORE",min:0,max:1,val:.25,fmt:v=>Math.round(v*100)+"%",onchange:upd});
   moreM.knobs.tone=makeKnob(k,{label:"TONE",min:-1,max:1,val:0,fmt:v=>v.toFixed(2),onchange:upd});
   moreM.segs.stage=makeSegs(card.segRow,["×1","×2","×3","×4"],0,moreM.color,upd);
   moreM.setMag=upd;
 };
-moreM.randomize=()=>{ moreM.knobs.amt.set(Math.random()*.8); moreM.knobs.tone.set(Math.random()*2-1);
+moreM.randomize=()=>{ moreM.knobs.amt.set(Math.random()*.5); moreM.knobs.tone.set(Math.random()*2-1);
   moreM.segs.stage.set(Math.floor(Math.random()*4)); };
 
 /* ---------------- MASTER ---------------- */
@@ -707,49 +707,55 @@ function setMag(v){
 
 /* ---------------- presets ---------------- */
 const PRESETS={
-  "— Presets —":null,
+  "Init (tudo off)":{mag:1,order:["boom","shift","space","comp","sat","more"],
+    boom:{boom:0,tune:52,shack:0,decay:.4,seg_acid:0,seg_ntype:0},
+    shift:{mix:0,semi:0,form:0},
+    space:{mix:0,decay:1.2,pre:.01,duck:0,seg_type:0},
+    comp:{amt:0,mix:0,seg_mode:0},
+    sat:{drive:0,mix:0,seg_mode:0},
+    more:{amt:0,tone:0,seg_stage:0}},
   "Polido subtil":{mag:.55,order:["boom","comp","sat","space","shift","more"],
     boom:{boom:.25,tune:50,shack:.12,decay:.3,seg_acid:0,seg_ntype:0},
     shift:{mix:0,semi:0,form:0},
     space:{mix:.14,decay:.7,pre:.008,duck:.3,seg_type:0},
     comp:{amt:.4,mix:.6,seg_mode:0},
-    sat:{drive:.2,mix:.7,seg_mode:0},
-    more:{amt:.18,tone:.1,seg_stage:0}},
+    sat:{drive:.15,mix:.6,seg_mode:0},
+    more:{amt:.1,tone:.1,seg_stage:0}},
   "Trap gordo":{mag:.9,order:["boom","sat","comp","shift","space","more"],
     boom:{boom:.75,tune:44,shack:.35,decay:.5,seg_acid:0,seg_ntype:0},
     shift:{mix:0,semi:0,form:0},
     space:{mix:.1,decay:.4,pre:0,duck:.7,seg_type:3},
     comp:{amt:.75,mix:.85,seg_mode:2},
-    sat:{drive:.45,mix:.9,seg_mode:1},
-    more:{amt:.5,tone:-.15,seg_stage:1}},
+    sat:{drive:.3,mix:.8,seg_mode:1},
+    more:{amt:.25,tone:-.15,seg_stage:1}},
   "Break frito":{mag:1,order:["boom","shift","sat","comp","space","more"],
     boom:{boom:.4,tune:55,shack:.5,decay:.35,seg_acid:0,seg_ntype:1},
     shift:{mix:.35,semi:-2,form:.4},
     space:{mix:.2,decay:.9,pre:.01,duck:.5,seg_type:2},
     comp:{amt:.9,mix:.9,seg_mode:4},
-    sat:{drive:.7,mix:1,seg_mode:4},
-    more:{amt:.65,tone:.3,seg_stage:2}},
+    sat:{drive:.45,mix:.85,seg_mode:4},
+    more:{amt:.35,tone:.3,seg_stage:1}},
   "Sala viva (acústico)":{mag:.7,order:["boom","space","comp","sat","shift","more"],
     boom:{boom:.2,tune:60,shack:.08,decay:.25,seg_acid:0,seg_ntype:0},
     shift:{mix:0,semi:0,form:0},
     space:{mix:.35,decay:1.4,pre:.015,duck:.45,seg_type:1},
     comp:{amt:.55,mix:.7,seg_mode:1},
-    sat:{drive:.25,mix:.6,seg_mode:2},
-    more:{amt:.22,tone:.15,seg_stage:0}},
+    sat:{drive:.2,mix:.55,seg_mode:2},
+    more:{amt:.12,tone:.15,seg_stage:0}},
   "Acid rave":{mag:1.1,order:["boom","shift","comp","sat","space","more"],
     boom:{boom:.85,tune:48,shack:.4,decay:.6,seg_acid:1,seg_ntype:1},
     shift:{mix:.25,semi:5,form:-.5},
     space:{mix:.25,decay:2.2,pre:.02,duck:.8,seg_type:1},
     comp:{amt:.8,mix:.9,seg_mode:3},
-    sat:{drive:.85,mix:.95,seg_mode:3},
-    more:{amt:.8,tone:.4,seg_stage:3}},
+    sat:{drive:.55,mix:.85,seg_mode:3},
+    more:{amt:.45,tone:.4,seg_stage:2}},
   "Lo-fi manteiga rançosa":{mag:.85,order:["boom","sat","shift","space","comp","more"],
     boom:{boom:.5,tune:52,shack:.3,decay:.4,seg_acid:0,seg_ntype:2},
     shift:{mix:.4,semi:-3,form:-.3},
     space:{mix:.28,decay:.6,pre:.005,duck:.2,seg_type:2},
     comp:{amt:.6,mix:.75,seg_mode:5},
-    sat:{drive:.6,mix:.9,seg_mode:5},
-    more:{amt:.4,tone:-.4,seg_stage:1}}
+    sat:{drive:.4,mix:.8,seg_mode:5},
+    more:{amt:.25,tone:-.4,seg_stage:1}}
 };
 function loadPreset(p){
   if(!p||!READY)return;
