@@ -476,12 +476,12 @@ compM.build=card=>{
   const apply=i=>{ const[t,r,a,rl,kn,mk]=COMP_MODES[i].p;
     cp.node.threshold.value=t; cp.node.ratio.value=r; cp.node.attack.value=a;
     cp.node.release.value=rl; cp.node.knee.value=kn; cp.base=mk; upd(); };
-  const upd=()=>{ const mix=compM.knobs.mix?compM.knobs.mix.get():1;
-    const amt=compM.knobs.amt?compM.knobs.amt.get():.5;
+  const upd=()=>{ if(!compM.knobs.mix||!compM.knobs.amt||!compM.segs.mode) return;
+    const mix=compM.knobs.mix.get(), amt=compM.knobs.amt.get();
     const m=mix*MAG;
     cp.wet.gain.value=m*(cp.base||1.3)*(0.6+amt*0.9);
     cp.dry.gain.value=1-m*0.85;
-    cp.node.threshold.value=COMP_MODES[compM.segs.mode.get()].p[0]-amt*10; };
+    cp.node.threshold.value=(COMP_MODES[compM.segs.mode.get()]||COMP_MODES[0]).p[0]-amt*10; };
   const k=card.knobRow;
   compM.knobs.amt=makeKnob(k,{label:"AMOUNT",min:0,max:1,val:.5,fmt:v=>Math.round(v*100)+"%",onchange:upd});
   compM.knobs.mix=makeKnob(k,{label:"MIX (PAR.)",min:0,max:1,val:.7,fmt:v=>Math.round(v*100)+"%",onchange:upd});
@@ -508,7 +508,8 @@ satM.build=card=>{
   satM.input.connect(st.pre).connect(st.ws).connect(st.wet).connect(satM.output);
   satM.input.connect(st.dry).connect(satM.output);
   st.curve="CONSOLE";
-  const upd=()=>{ const d=satM.knobs.drive.get(); st.ws.curve=SAT_CURVES[st.curve](d);
+  const upd=()=>{ if(!satM.knobs.drive||!satM.knobs.mix||!satM.segs.mode) return;
+    const d=satM.knobs.drive.get(); st.ws.curve=SAT_CURVES[st.curve](d);
     if(st.curve==="FLUB"){st.pre.type="lowpass";st.pre.frequency.value=1200;}
     else st.pre.type="allpass";
     const m=satM.knobs.mix.get()*MAG;
@@ -533,7 +534,8 @@ moreM.build=card=>{
   mo.wet=AC.createGain(); mo.dry=AC.createGain();
   moreM.input.connect(mo.tilt1).connect(mo.tilt2).connect(mo.ws).connect(mo.wet).connect(moreM.output);
   moreM.input.connect(mo.dry).connect(moreM.output);
-  const upd=()=>{ const a=moreM.knobs.amt.get()*MAG, stg=moreM.segs.stage.get()+1,
+  const upd=()=>{ if(!moreM.knobs.amt||!moreM.knobs.tone||!moreM.segs.stage) return;
+    const a=moreM.knobs.amt.get()*MAG, stg=moreM.segs.stage.get()+1,
       tone=moreM.knobs.tone.get();
     mo.ws.curve=shaper(x=>{let y=x;for(let s=0;s<stg;s++)y=Math.tanh(y*(1+a*3));return clamp(y*(1+a),-1,1);});
     mo.tilt1.gain.value=-tone*6; mo.tilt2.gain.value=tone*6;
